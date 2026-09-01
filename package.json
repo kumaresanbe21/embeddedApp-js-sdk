@@ -11,7 +11,7 @@
     "build": "node build.js",
     "build:gradle": "gradle clean && bash ./build.sh",
     "build:wdk": "node build.js --bundle wdk",
-    "build:wdklight": "node build.js --bundle wdklight",
+    "build:wdklite": "node build.js --bundle wdklite",
     "build:wapp": "node build.js --bundle wapp",
     "build:connector": "node build.js --bundle connector",
     "build:all": "node build.js --all"

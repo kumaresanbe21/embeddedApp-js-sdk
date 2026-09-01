@@ -5,7 +5,7 @@
  * Creates four separate bundles:
  * 1. WDK.min.js - Core SDK (ZSDK + Initialization + ZRC + ZohoCrmHelper)
  * 2. WApp.min.js - Lightweight SDK (ZSDK + Initialization + ZRC + WAppHelper)
- * 3. wdk-light.min.js - Ultra-light SDK (ZSDK + Initialization + ZRC + WDKLight)
+ * 3. wdk_lite.min.js - Ultra-light SDK (ZSDK + Initialization + ZRC + WDKLite)
  * 4. connector-helper.min.js - Connector Helper (standalone, requires WDK or WApp)
  */
 
@@ -41,12 +41,12 @@ const WAPP_FILES = [
   'WAppHelper.js'
 ];
 
-// File order for WDKLight bundle (ultra-light SDK)
-const WDKLIGHT_FILES = [
+// File order for WDKLite bundle (ultra-light SDK)
+const WDKLITE_FILES = [
   'ZSDK.js',
   'Initialization.js',
   'ZRC.js',
-  'WDKLight.js'
+  'WDKLite.js'
 ];
 
 // File order for Connector bundle
@@ -200,14 +200,14 @@ async function buildWApp() {
 }
 
 /**
- * Build WDKLight bundle (ultra-light SDK)
+ * Build WDKLite bundle (ultra-light SDK)
  */
-async function buildWDKLight() {
-  console.log('\n📦 Building wdk-light.min.js bundle...\n');
+async function buildWDKLite() {
+  console.log('\n📦 Building wdk_lite.min.js bundle...\n');
 
   // Step 1: Transpile files
   console.log('Step 1: Transpiling files...');
-  WDKLIGHT_FILES.forEach((file) => {
+  WDKLITE_FILES.forEach((file) => {
     const inputFile = path.join(LIB_DIR, file);
     const outputFile = path.join(TEMP_DIR, file);
 
@@ -218,19 +218,19 @@ async function buildWDKLight() {
 
   // Step 2: Concatenate
   console.log('\nStep 2: Concatenating files...');
-  const concatFile = path.join(TEMP_DIR, 'WDKLight.concat.js');
-  concatenateFiles(WDKLIGHT_FILES, concatFile);
+  const concatFile = path.join(TEMP_DIR, 'WDKLite.concat.js');
+  concatenateFiles(WDKLITE_FILES, concatFile);
 
   // Step 3: Minify
   console.log('\nStep 3: Minifying...');
-  const outputFile = path.join(BUILD_DIR, 'wdk-light.min.js');
+  const outputFile = path.join(BUILD_DIR, 'wdk_lite.min.js');
   await minifyFile(concatFile, outputFile, {
     mangle: {
       reserved: ['ZSDK', 'ZOHO', 'ZDK', 'ZSDKUtil', 'ZSDKMessageManager', 'ZSDKEventManager', 'wdk']
     }
   });
 
-  console.log(`\n✅ wdk-light.min.js built successfully: ${outputFile}\n`);
+  console.log(`\n✅ wdk_lite.min.js built successfully: ${outputFile}\n`);
   return outputFile;
 }
 
@@ -295,8 +295,8 @@ async function build(bundleType = 'all') {
       await buildWApp();
     }
 
-    if (bundleType === 'wdklight' || bundleType === 'all') {
-      await buildWDKLight();
+    if (bundleType === 'wdklite' || bundleType === 'all') {
+      await buildWDKLite();
     }
     
     if (bundleType === 'connector' || bundleType === 'all') {
@@ -311,8 +311,8 @@ async function build(bundleType = 'all') {
     if (bundleType === 'wapp' || bundleType === 'all') {
       console.log(`  - ${path.join(BUILD_DIR, 'WApp.min.js')}`);
     }
-    if (bundleType === 'wdklight' || bundleType === 'all') {
-      console.log(`  - ${path.join(BUILD_DIR, 'wdk-light.min.js')}`);
+    if (bundleType === 'wdklite' || bundleType === 'all') {
+      console.log(`  - ${path.join(BUILD_DIR, 'wdk_lite.min.js')}`);
     }
     if (bundleType === 'connector' || bundleType === 'all') {
       console.log(`  - ${path.join(BUILD_DIR, 'connector-helper.min.js')}`);
@@ -332,7 +332,7 @@ const bundleType = args.includes('--bundle')
   : args.includes('--all') ? 'all'
   : 'all';
 
-// Valid bundle types: all | wdk | wapp | wdklight | connector
+// Valid bundle types: all | wdk | wapp | wdklite | connector
 
 // Run build
 build(bundleType).catch(error => {
