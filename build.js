@@ -3,7 +3,7 @@
 /**
  * Modern build script for Zoho Embedded App SDK
  * Creates three separate bundles:
- * 1. WDK.min.js - Core SDK (ZSDK + Initialization + ZRC + ZohoCrmHelper)
+ * 1. WDK.min.js - Widget SDK (ZSDK + Initialization + ZRC + WDK)
  * 2. WApp.min.js - Lightweight SDK (ZSDK + Initialization + ZRC + EmbeddedApp + WAppHandler)
  * 3. connector-helper.min.js - Connector Helper (standalone, requires WDK or WApp)
  */
@@ -29,7 +29,7 @@ const WDK_FILES = [
   'ZSDK.js',
   'Initialization.js',
   'ZRC.js',
-  'ZohoCrmHelper.js'
+  'WDK.js'
 ];
 
 // File order for WApp bundle (lightweight SDK)
@@ -64,19 +64,30 @@ function transpileFile(inputFile, outputFile, configFile = '.babelrc') {
 /**
  * Concatenate files
  */
-function concatenateFiles(files, outputFile) {
+function concatenateFiles(files, outputFile, options = {}) {
   const contents = files.map(file => {
     const filePath = path.join(TEMP_DIR, file);
     if (!fs.existsSync(filePath)) {
       throw new Error(`File not found: ${filePath}`);
     }
-    return fs.readFileSync(filePath, 'utf8');
+    let content = fs.readFileSync(filePath, 'utf8');
+    if (options.privateWdkAccessor) {
+      content = content.replace(/\bself\._getAppSDK\b/g, '__wdkGetAppSDK');
+      content = content.replace(
+        'Ensure ZSDK.js is loaded before calling _getAppSDK()',
+        'Ensure ZSDK.js is loaded before SDK initialization'
+      );
+    }
+    return content;
   });
   
   const concatenated = contents.join('\n\n');
-  fs.writeFileSync(outputFile, concatenated, 'utf8');
+  const output = options.privateWdkAccessor
+    ? `;(function () {\n  var __wdkGetAppSDK;\n${concatenated}\n})();`
+    : concatenated;
+  fs.writeFileSync(outputFile, output, 'utf8');
   console.log(`✓ Concatenated ${files.length} files`);
-  return concatenated;
+  return output;
 }
 
 /**
@@ -148,13 +159,16 @@ async function buildWDK() {
   // Step 2: Concatenate
   console.log('\nStep 2: Concatenating files...');
   const concatFile = path.join(TEMP_DIR, 'WDK.concat.js');
-  concatenateFiles(WDK_FILES, concatFile);
+  concatenateFiles(WDK_FILES, concatFile, { privateWdkAccessor: true });
   
   // Step 3: Minify
   console.log('\nStep 3: Minifying...');
   const outputFile = path.join(BUILD_DIR, 'WDK.min.js');
-  await minifyFile(concatFile, outputFile);
-  
+  const bundle = await minifyFile(concatFile, outputFile);
+  if (bundle.includes('_getAppSDK')) {
+    throw new Error('WDK bundle must not expose the appSDK accessor');
+  }
+
   console.log(`\n✅ WDK.min.js built successfully: ${outputFile}\n`);
   return outputFile;
 }
