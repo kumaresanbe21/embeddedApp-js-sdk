@@ -10,10 +10,10 @@
   "scripts": {
     "build": "node build.js",
     "build:gradle": "gradle clean && bash ./build.sh",
+    "build:zoho": "node build.js --bundle zoho",
     "build:wdk": "node build.js --bundle wdk",
     "build:wdklite": "node build.js --bundle wdklite",
     "build:wapp": "node build.js --bundle wapp",
-    "build:connector": "node build.js --bundle connector",
     "build:all": "node build.js --all"
   },
   "repository": {

@@ -2,11 +2,11 @@
 
 /**
  * Modern build script for Zoho Embedded App SDK
- * Creates four separate bundles:
- * 1. WDK.min.js - Core SDK (ZSDK + Initialization + ZRC + ZohoCrmHelper)
- * 2. WApp.min.js - Lightweight SDK (ZSDK + Initialization + ZRC + WAppHelper)
- * 3. wdk_lite.min.js - Ultra-light SDK (ZSDK + Initialization + ZRC + WDKLite)
- * 4. connector-helper.min.js - Connector Helper (standalone, requires WDK or WApp)
+ * Creates the supported bundles:
+ * 1. ZohoEmbededAppSDK.min.js - ZSDK + Initialization + ZRC + ZohoCrmHelper
+ * 2. wdk.min.js - ZSDK + Initialization + ZRC + WDK
+ * 3. wdk_lite.min.js - ZSDK + Initialization + ZRC + WDKLite
+ * 4. WApp.min.js - ZSDK + Initialization + ZRC + WAppHelper
  */
 
 const fs = require('fs');
@@ -25,15 +25,23 @@ const TEMP_DIR = path.join(__dirname, 'build', 'temp');
   }
 });
 
-// File order for WDK bundle (core SDK)
-const WDK_FILES = [
+// File order for ZohoEmbededAppSDK bundle
+const ZOHO_FILES = [
   'ZSDK.js',
   'Initialization.js',
   'ZRC.js',
   'ZohoCrmHelper.js'
 ];
 
-// File order for WApp bundle (lightweight SDK)
+// File order for WDK bundle
+const WDK_FILES = [
+  'ZSDK.js',
+  'Initialization.js',
+  'ZRC.js',
+  'WDK.js'
+];
+
+// File order for WApp bundle
 const WAPP_FILES = [
   'ZSDK.js',
   'Initialization.js',
@@ -41,17 +49,12 @@ const WAPP_FILES = [
   'WAppHelper.js'
 ];
 
-// File order for WDKLite bundle (ultra-light SDK)
+// File order for WDKLite bundle
 const WDKLITE_FILES = [
   'ZSDK.js',
   'Initialization.js',
   'ZRC.js',
   'WDKLite.js'
-];
-
-// File order for Connector bundle
-const CONNECTOR_FILES = [
-  'ConnectorHelper.js'
 ];
 
 /**
@@ -138,38 +141,67 @@ async function minifyFile(inputFile, outputFile, options = {}) {
 }
 
 /**
- * Build WDK bundle
+ * Build ZohoEmbededAppSDK bundle
  */
-async function buildWDK() {
-  console.log('\n📦 Building WDK.min.js bundle...\n');
-  
+async function buildZohoEmbededAppSDK() {
+  console.log('\n📦 Building ZohoEmbededAppSDK.min.js bundle...\n');
+
   // Step 1: Transpile files
   console.log('Step 1: Transpiling files...');
-  WDK_FILES.forEach((file, index) => {
+  ZOHO_FILES.forEach((file) => {
     const inputFile = path.join(LIB_DIR, file);
     const outputFile = path.join(TEMP_DIR, file);
-    
-    // Use legacy config for ZSDK, modern for others
+
     const configFile = file === 'ZSDK.js' ? '.babelrc' : '.babelrc.modern.json';
     transpileFile(inputFile, outputFile, configFile);
   });
-  
+
   // Step 2: Concatenate
   console.log('\nStep 2: Concatenating files...');
-  const concatFile = path.join(TEMP_DIR, 'WDK.concat.js');
-  concatenateFiles(WDK_FILES, concatFile);
-  
+  const concatFile = path.join(TEMP_DIR, 'ZohoEmbededAppSDK.concat.js');
+  concatenateFiles(ZOHO_FILES, concatFile);
+
   // Step 3: Minify
   console.log('\nStep 3: Minifying...');
-  const outputFile = path.join(BUILD_DIR, 'WDK.min.js');
+  const outputFile = path.join(BUILD_DIR, 'ZohoEmbededAppSDK.min.js');
   await minifyFile(concatFile, outputFile);
-  
-  console.log(`\n✅ WDK.min.js built successfully: ${outputFile}\n`);
+
+  console.log(`\n✅ ZohoEmbededAppSDK.min.js built successfully: ${outputFile}\n`);
   return outputFile;
 }
 
 /**
- * Build WApp bundle (lightweight SDK)
+ * Build WDK bundle
+ */
+async function buildWDK() {
+  console.log('\n📦 Building wdk.min.js bundle...\n');
+
+  // Step 1: Transpile files
+  console.log('Step 1: Transpiling files...');
+  WDK_FILES.forEach((file) => {
+    const inputFile = path.join(LIB_DIR, file);
+    const outputFile = path.join(TEMP_DIR, file);
+
+    const configFile = file === 'ZSDK.js' ? '.babelrc' : '.babelrc.modern.json';
+    transpileFile(inputFile, outputFile, configFile);
+  });
+
+  // Step 2: Concatenate
+  console.log('\nStep 2: Concatenating files...');
+  const concatFile = path.join(TEMP_DIR, 'wdk.concat.js');
+  concatenateFiles(WDK_FILES, concatFile);
+
+  // Step 3: Minify
+  console.log('\nStep 3: Minifying...');
+  const outputFile = path.join(BUILD_DIR, 'wdk.min.js');
+  await minifyFile(concatFile, outputFile);
+
+  console.log(`\n✅ wdk.min.js built successfully: ${outputFile}\n`);
+  return outputFile;
+}
+
+/**
+ * Build WApp bundle
  */
 async function buildWApp() {
   console.log('\n📦 Building WApp.min.js bundle...\n');
@@ -235,46 +267,27 @@ async function buildWDKLite() {
 }
 
 /**
- * Build Connector Helper bundle
- */
-async function buildConnector() {
-  console.log('\n📦 Building connector-helper.min.js bundle...\n');
-  
-  // Step 1: Transpile
-  console.log('Step 1: Transpiling files...');
-  CONNECTOR_FILES.forEach(file => {
-    const inputFile = path.join(LIB_DIR, file);
-    const outputFile = path.join(TEMP_DIR, file);
-    transpileFile(inputFile, outputFile, '.babelrc.modern.json');
-  });
-  
-  // Step 2: Concatenate (only one file, but keeping for consistency)
-  console.log('\nStep 2: Concatenating files...');
-  const concatFile = path.join(TEMP_DIR, 'connector-helper.concat.js');
-  concatenateFiles(CONNECTOR_FILES, concatFile);
-  
-  // Step 3: Minify
-  console.log('\nStep 3: Minifying...');
-  const outputFile = path.join(BUILD_DIR, 'connector-helper.min.js');
-  await minifyFile(concatFile, outputFile);
-  
-  console.log(`\n✅ connector-helper.min.js built successfully: ${outputFile}\n`);
-  console.log('⚠️  Note: connector-helper.min.js requires WDK.min.js to be loaded first\n');
-  return outputFile;
-}
-
-/**
  * Clean build directories
  */
 function clean() {
   console.log('🧹 Cleaning build directories...');
-  [TEMP_DIR].forEach(dir => {
-    if (fs.existsSync(dir)) {
-      fs.readdirSync(dir).forEach(file => {
-        fs.unlinkSync(path.join(dir, file));
-      });
+
+  [TEMP_DIR, BUILD_DIR].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      return;
     }
+
+    fs.readdirSync(dir).forEach(file => {
+      const filePath = path.join(dir, file);
+      const stat = fs.lstatSync(filePath);
+      if (stat.isDirectory()) {
+        fs.rmSync(filePath, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(filePath);
+      }
+    });
   });
+
   console.log('✓ Cleaned\n');
 }
 
@@ -283,10 +296,14 @@ function clean() {
  */
 async function build(bundleType = 'all') {
   console.log('🚀 Starting build process...\n');
-  
+
   clean();
-  
+
   try {
+    if (bundleType === 'zoho' || bundleType === 'all') {
+      await buildZohoEmbededAppSDK();
+    }
+
     if (bundleType === 'wdk' || bundleType === 'all') {
       await buildWDK();
     }
@@ -298,15 +315,14 @@ async function build(bundleType = 'all') {
     if (bundleType === 'wdklite' || bundleType === 'all') {
       await buildWDKLite();
     }
-    
-    if (bundleType === 'connector' || bundleType === 'all') {
-      await buildConnector();
-    }
-    
+
     console.log('✨ Build completed successfully!\n');
     console.log('Output files:');
+    if (bundleType === 'zoho' || bundleType === 'all') {
+      console.log(`  - ${path.join(BUILD_DIR, 'ZohoEmbededAppSDK.min.js')}`);
+    }
     if (bundleType === 'wdk' || bundleType === 'all') {
-      console.log(`  - ${path.join(BUILD_DIR, 'WDK.min.js')}`);
+      console.log(`  - ${path.join(BUILD_DIR, 'wdk.min.js')}`);
     }
     if (bundleType === 'wapp' || bundleType === 'all') {
       console.log(`  - ${path.join(BUILD_DIR, 'WApp.min.js')}`);
@@ -314,11 +330,8 @@ async function build(bundleType = 'all') {
     if (bundleType === 'wdklite' || bundleType === 'all') {
       console.log(`  - ${path.join(BUILD_DIR, 'wdk_lite.min.js')}`);
     }
-    if (bundleType === 'connector' || bundleType === 'all') {
-      console.log(`  - ${path.join(BUILD_DIR, 'connector-helper.min.js')}`);
-    }
     console.log('');
-    
+
   } catch (error) {
     console.error('❌ Build failed:', error.message);
     process.exit(1);
@@ -332,7 +345,7 @@ const bundleType = args.includes('--bundle')
   : args.includes('--all') ? 'all'
   : 'all';
 
-// Valid bundle types: all | wdk | wapp | wdklite | connector
+// Valid bundle types: all | zoho | wdk | wapp | wdklite
 
 // Run build
 build(bundleType).catch(error => {
