@@ -30,7 +30,10 @@ const ZOHO_FILES = [
   'ZSDK.js',
   'Initialization.js',
   'ZRC.js',
-  'ZohoCrmHelper.js'
+  'ZohoCrmHelper.js',
+  'Event.js',
+  'Store.js',
+  'WDK.js'
 ];
 
 // File order for WDK bundle
