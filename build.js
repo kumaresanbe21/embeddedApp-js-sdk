@@ -7,6 +7,7 @@
  * 2. wdk.min.js - ZSDK + Initialization + ZRC + WDK
  * 3. wdk_lite.min.js - ZSDK + Initialization + ZRC + WDKLite
  * 4. WApp.min.js - ZSDK + Initialization + ZRC + WAppHelper
+ * 5. PlatformHelper.min.js - Platform helper as add-on SDK (PlatformHelper)
  */
 
 const fs = require('fs');
@@ -60,6 +61,10 @@ const WDKLITE_FILES = [
   'WDKLite.js'
 ];
 
+// File order for Platform bundle
+const PLATFORM_FILES = [
+  'PlatformHelper.js'
+];
 /**
  * Transpile a file using Babel
  */
@@ -79,19 +84,30 @@ function transpileFile(inputFile, outputFile, configFile = '.babelrc') {
 /**
  * Concatenate files
  */
-function concatenateFiles(files, outputFile) {
+function concatenateFiles(files, outputFile, options = {}) {
   const contents = files.map(file => {
     const filePath = path.join(TEMP_DIR, file);
     if (!fs.existsSync(filePath)) {
       throw new Error(`File not found: ${filePath}`);
     }
-    return fs.readFileSync(filePath, 'utf8');
+    let content = fs.readFileSync(filePath, 'utf8');
+    if (options.privateWdkAccessor) {
+      content = content.replace(/\bself\._getAppSDK\b/g, '__wdkGetAppSDK');
+      content = content.replace(
+        'Ensure ZSDK.js is loaded before calling _getAppSDK()',
+        'Ensure ZSDK.js is loaded before SDK initialization'
+      );
+    }
+    return content;
   });
   
   const concatenated = contents.join('\n\n');
-  fs.writeFileSync(outputFile, concatenated, 'utf8');
+  const output = options.privateWdkAccessor
+    ? `;(function () {\n  var __wdkGetAppSDK;\n${concatenated}\n})();`
+    : concatenated;
+  fs.writeFileSync(outputFile, output, 'utf8');
   console.log(`✓ Concatenated ${files.length} files`);
-  return concatenated;
+  return output;
 }
 
 /**
@@ -192,12 +208,15 @@ async function buildWDK() {
   // Step 2: Concatenate
   console.log('\nStep 2: Concatenating files...');
   const concatFile = path.join(TEMP_DIR, 'wdk.concat.js');
-  concatenateFiles(WDK_FILES, concatFile);
-
+  concatenateFiles(WDK_FILES, concatFile, { privateWdkAccessor: true });
+  
   // Step 3: Minify
   console.log('\nStep 3: Minifying...');
   const outputFile = path.join(BUILD_DIR, 'wdk.min.js');
-  await minifyFile(concatFile, outputFile);
+  const bundle = await minifyFile(concatFile, outputFile);
+  if (bundle.includes('_getAppSDK')) {
+    throw new Error('WDK bundle must not expose the appSDK accessor');
+  }
 
   console.log(`\n✅ wdk.min.js built successfully: ${outputFile}\n`);
   return outputFile;
@@ -270,6 +289,35 @@ async function buildWDKLite() {
 }
 
 /**
+ * Build PlatformHelper bundle
+ */
+async function buildPlatform() {
+  console.log('\n📦 Building PlatformHelper.min.js bundle...\n');
+
+  // Step 1: Transpile files
+  console.log('Step 1: Transpiling files...');
+  PLATFORM_FILES.forEach(file => {
+    const inputFile = path.join(LIB_DIR, file);
+    const outputFile = path.join(TEMP_DIR, file);
+    const configFile = file === 'ZSDK.js' ? '.babelrc' : '.babelrc.modern.json';
+    transpileFile(inputFile, outputFile, configFile);
+  });
+
+  // Step 2: Concatenate
+  console.log('\nStep 2: Concatenating files...');
+  const concatFile = path.join(TEMP_DIR, 'PlatformHelper.concat.js');
+  concatenateFiles(PLATFORM_FILES, concatFile);
+
+  // Step 3: Minify
+  console.log('\nStep 3: Minifying...');
+  const outputFile = path.join(BUILD_DIR, 'PlatformHelper.min.js');
+  await minifyFile(concatFile, outputFile);
+
+  console.log(`\n✅ PlatformHelper.min.js built successfully: ${outputFile}\n`);
+  return outputFile;
+}
+
+/**
  * Clean build directories
  */
 function clean() {
@@ -319,6 +367,10 @@ async function build(bundleType = 'all') {
       await buildWDKLite();
     }
 
+    if (bundleType === 'platform' || bundleType === 'all') {
+      await buildPlatform();
+    }
+
     console.log('✨ Build completed successfully!\n');
     console.log('Output files:');
     if (bundleType === 'zoho' || bundleType === 'all') {
@@ -332,6 +384,9 @@ async function build(bundleType = 'all') {
     }
     if (bundleType === 'wdklite' || bundleType === 'all') {
       console.log(`  - ${path.join(BUILD_DIR, 'wdk_lite.min.js')}`);
+    }
+    if (bundleType === 'platform' || bundleType === 'all') {
+      console.log(`  - ${path.join(BUILD_DIR, 'PlatformHelper.min.js')}`);
     }
     console.log('');
 
@@ -348,7 +403,7 @@ const bundleType = args.includes('--bundle')
   : args.includes('--all') ? 'all'
   : 'all';
 
-// Valid bundle types: all | zoho | wdk | wapp | wdklite
+// Valid bundle types: all | zoho | wdk | wapp | wdklite | platform
 
 // Run build
 build(bundleType).catch(error => {
