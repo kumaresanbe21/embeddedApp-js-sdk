@@ -5,7 +5,7 @@
  * Creates three separate bundles:
  * 1. WDK.min.js - Widget SDK (ZSDK + Initialization + ZRC + WDK)
  * 2. WApp.min.js - Lightweight SDK (ZSDK + Initialization + ZRC + EmbeddedApp + WAppHandler)
- * 3. connector-helper.min.js - Connector Helper (standalone, requires WDK or WApp)
+ * 3. PlatformHelper.min.js - Platform helpers (ZSDK + Initialization + PlatformHelper)
  */
 
 const fs = require('fs');
@@ -41,8 +41,8 @@ const WAPP_FILES = [
 ];
 
 // File order for Connector bundle
-const CONNECTOR_FILES = [
-  'ConnectorHelper.js'
+const PLATFORM_FILES = [
+  'PlatformHelper.js'
 ];
 
 /**
@@ -205,31 +205,31 @@ async function buildWApp() {
 }
 
 /**
- * Build Connector Helper bundle
+ * Build PlatformHelper bundle
  */
-async function buildConnector() {
-  console.log('\n📦 Building connector-helper.min.js bundle...\n');
-  
-  // Step 1: Transpile
+async function buildPlatform() {
+  console.log('\n📦 Building PlatformHelper.min.js bundle...\n');
+
+  // Step 1: Transpile files
   console.log('Step 1: Transpiling files...');
-  CONNECTOR_FILES.forEach(file => {
+  PLATFORM_FILES.forEach(file => {
     const inputFile = path.join(LIB_DIR, file);
     const outputFile = path.join(TEMP_DIR, file);
-    transpileFile(inputFile, outputFile, '.babelrc.modern.json');
+    const configFile = file === 'ZSDK.js' ? '.babelrc' : '.babelrc.modern.json';
+    transpileFile(inputFile, outputFile, configFile);
   });
-  
-  // Step 2: Concatenate (only one file, but keeping for consistency)
+
+  // Step 2: Concatenate
   console.log('\nStep 2: Concatenating files...');
-  const concatFile = path.join(TEMP_DIR, 'connector-helper.concat.js');
-  concatenateFiles(CONNECTOR_FILES, concatFile);
-  
+  const concatFile = path.join(TEMP_DIR, 'PlatformHelper.concat.js');
+  concatenateFiles(PLATFORM_FILES, concatFile);
+
   // Step 3: Minify
   console.log('\nStep 3: Minifying...');
-  const outputFile = path.join(BUILD_DIR, 'connector-helper.min.js');
+  const outputFile = path.join(BUILD_DIR, 'PlatformHelper.min.js');
   await minifyFile(concatFile, outputFile);
-  
-  console.log(`\n✅ connector-helper.min.js built successfully: ${outputFile}\n`);
-  console.log('⚠️  Note: connector-helper.min.js requires WDK.min.js to be loaded first\n');
+
+  console.log(`\n✅ PlatformHelper.min.js built successfully: ${outputFile}\n`);
   return outputFile;
 }
 
@@ -265,8 +265,8 @@ async function build(bundleType = 'all') {
       await buildWApp();
     }
     
-    if (bundleType === 'connector' || bundleType === 'all') {
-      await buildConnector();
+    if (bundleType === 'platform' || bundleType === 'all') {
+      await buildPlatform();
     }
     
     console.log('✨ Build completed successfully!\n');
@@ -277,8 +277,8 @@ async function build(bundleType = 'all') {
     if (bundleType === 'wapp' || bundleType === 'all') {
       console.log(`  - ${path.join(BUILD_DIR, 'WApp.min.js')}`);
     }
-    if (bundleType === 'connector' || bundleType === 'all') {
-      console.log(`  - ${path.join(BUILD_DIR, 'connector-helper.min.js')}`);
+    if (bundleType === 'platform' || bundleType === 'all') {
+      console.log(`  - ${path.join(BUILD_DIR, 'PlatformHelper.min.js')}`);
     }
     console.log('');
     
